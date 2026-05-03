@@ -1,0 +1,1421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>TrendRSI AI — Trading Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+<style>
+/* ═══════════════════════════════════════════════════
+   DESIGN SYSTEM — CYBERPUNK TERMINAL MEETS FINANCE
+═══════════════════════════════════════════════════ */
+:root {
+  --bg:         #080c14;
+  --bg2:        #0d1220;
+  --bg3:        #111827;
+  --panel:      rgba(15,22,40,0.92);
+  --border:     rgba(0,200,255,0.12);
+  --glow:       #00c8ff;
+  --glow2:      #0af;
+  --buy:        #00ff88;
+  --sell:       #ff3b5c;
+  --hold:       #f0a500;
+  --neutral:    #8899bb;
+  --text:       #ccd6f6;
+  --dim:        #4a5568;
+  --font-mono:  'Space Mono', monospace;
+  --font-sans:  'Syne', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── GRID NOISE BACKGROUND ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background-image:
+    linear-gradient(rgba(0,200,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,200,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+
+/* ── SCANLINE ── */
+body::after {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background: repeating-linear-gradient(
+    0deg, transparent, transparent 2px,
+    rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px
+  );
+  pointer-events: none;
+}
+
+/* ── LAYOUT ── */
+.layout {
+  position: relative; z-index: 1;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 100vh;
+  padding: 0 0 24px;
+}
+
+/* ══ HEADER ══ */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  background: rgba(8,12,20,0.95);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(12px);
+  position: sticky; top: 0; z-index: 100;
+  gap: 12px;
+}
+
+.logo {
+  display: flex; align-items: center; gap: 10px;
+  font-family: var(--font-sans);
+  font-weight: 800;
+  font-size: 17px;
+  letter-spacing: -0.5px;
+  color: #fff;
+}
+
+.logo-icon {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, var(--glow), #0055ff);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  box-shadow: 0 0 16px rgba(0,200,255,0.4);
+  flex-shrink: 0;
+}
+
+.logo span { color: var(--glow); }
+
+.header-status {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 10px;
+  color: var(--neutral);
+  white-space: nowrap;
+}
+
+.dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--buy);
+  box-shadow: 0 0 6px var(--buy);
+  animation: pulse 2s infinite;
+}
+
+.dot.offline { background: var(--sell); box-shadow: 0 0 6px var(--sell); }
+
+@keyframes pulse {
+  0%,100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.header-actions {
+  display: flex; gap: 8px;
+}
+
+.btn {
+  padding: 7px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: rgba(0,200,255,0.06);
+  color: var(--glow);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn:hover {
+  background: rgba(0,200,255,0.15);
+  border-color: var(--glow);
+  box-shadow: 0 0 12px rgba(0,200,255,0.2);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--glow) 0%, #0066ff 100%);
+  color: #000;
+  border-color: transparent;
+  font-weight: 700;
+}
+
+.btn-primary:hover {
+  filter: brightness(1.15);
+  box-shadow: 0 0 20px rgba(0,200,255,0.5);
+}
+
+/* ══ MAIN GRID ══ */
+main {
+  padding: 16px;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  main { grid-template-columns: 1fr 1fr; }
+}
+
+@media (min-width: 1024px) {
+  main { grid-template-columns: 2fr 1fr 1fr; }
+  .span-2 { grid-column: span 2; }
+  .span-3 { grid-column: span 3; }
+}
+
+/* ══ PANEL / CARD ══ */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  backdrop-filter: blur(8px);
+  position: relative;
+  overflow: hidden;
+}
+
+.panel::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--glow), transparent);
+  opacity: 0.5;
+}
+
+.panel-title {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--neutral);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ══ SIGNAL CARD ══ */
+.signal-card {
+  text-align: center;
+  padding: 20px 16px;
+}
+
+.signal-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 24px;
+  border-radius: 100px;
+  font-family: var(--font-sans);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  margin-bottom: 12px;
+  border: 2px solid;
+  transition: all 0.4s ease;
+}
+
+.signal-badge.BUY  { color: var(--buy);  border-color: var(--buy);  background: rgba(0,255,136,0.08); box-shadow: 0 0 30px rgba(0,255,136,0.2); }
+.signal-badge.SELL { color: var(--sell); border-color: var(--sell); background: rgba(255,59,92,0.08);  box-shadow: 0 0 30px rgba(255,59,92,0.2); }
+.signal-badge.HOLD { color: var(--hold); border-color: var(--hold); background: rgba(240,165,0,0.08);  box-shadow: 0 0 30px rgba(240,165,0,0.2); }
+.signal-badge.EXIT_LONG { color: #ff8800; border-color: #ff8800; background: rgba(255,136,0,0.08); box-shadow: 0 0 30px rgba(255,136,0,0.2); }
+
+.signal-reason {
+  font-size: 11px;
+  color: var(--neutral);
+  line-height: 1.6;
+  max-width: 340px;
+  margin: 0 auto 14px;
+}
+
+.signal-time {
+  font-size: 10px;
+  color: var(--dim);
+}
+
+/* ══ STRENGTH METER ══ */
+.strength-row {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 14px;
+}
+
+.strength-label { font-size: 10px; color: var(--neutral); white-space: nowrap; }
+
+.strength-bar {
+  flex: 1;
+  height: 6px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 100px;
+  overflow: hidden;
+}
+
+.strength-fill {
+  height: 100%;
+  border-radius: 100px;
+  background: linear-gradient(90deg, var(--glow), var(--buy));
+  transition: width 0.6s ease;
+}
+
+.strength-pct { font-size: 10px; color: var(--glow); }
+
+/* ══ METRICS GRID ══ */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.metric {
+  background: rgba(0,200,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.metric-label {
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 5px;
+}
+
+.metric-value {
+  font-family: var(--font-sans);
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.metric-value.up   { color: var(--buy); }
+.metric-value.down { color: var(--sell); }
+.metric-value.warn { color: var(--hold); }
+
+.metric-sub {
+  font-size: 10px;
+  color: var(--dim);
+  margin-top: 2px;
+}
+
+/* ══ RSI GAUGE ══ */
+.gauge-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.gauge-svg { width: 130px; height: 75px; overflow: visible; }
+
+.gauge-value {
+  font-family: var(--font-sans);
+  font-size: 28px;
+  font-weight: 800;
+  text-anchor: middle;
+}
+
+.gauge-label {
+  font-size: 10px;
+  letter-spacing: 2px;
+  fill: var(--dim);
+  text-anchor: middle;
+}
+
+.gauge-zones {
+  display: flex;
+  justify-content: space-between;
+  width: 130px;
+  margin-top: 6px;
+}
+
+.gauge-zone {
+  font-size: 9px;
+  color: var(--dim);
+}
+
+/* ══ MINI CHART (Sparkline) ══ */
+.sparkline-wrap {
+  margin-top: 8px;
+  position: relative;
+}
+
+.sparkline-svg {
+  width: 100%;
+  height: 80px;
+  overflow: visible;
+}
+
+.spark-label {
+  font-size: 9px;
+  color: var(--dim);
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+/* ══ SIGNAL LOG ══ */
+.log-list {
+  max-height: 220px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.log-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.log-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.log-badge.BUY  { background: rgba(0,255,136,0.12); color: var(--buy); }
+.log-badge.SELL { background: rgba(255,59,92,0.12);  color: var(--sell); }
+.log-badge.HOLD,
+.log-badge.EXIT_LONG { background: rgba(240,165,0,0.12); color: var(--hold); }
+
+.log-text {
+  flex: 1;
+  font-size: 10px;
+  color: var(--neutral);
+  line-height: 1.5;
+}
+
+.log-time {
+  font-size: 9px;
+  color: var(--dim);
+  white-space: nowrap;
+}
+
+/* ══ WEBHOOK CONFIG ══ */
+.form-group { margin-bottom: 12px; }
+
+.form-label {
+  display: block;
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 5px;
+}
+
+.form-input {
+  width: 100%;
+  background: rgba(0,200,255,0.04);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 8px 10px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.form-input:focus {
+  border-color: var(--glow);
+  box-shadow: 0 0 0 3px rgba(0,200,255,0.1);
+}
+
+.form-row {
+  display: flex; gap: 8px;
+}
+
+.form-row .form-input { flex: 1; }
+
+/* ══ GITHUB SETUP ══ */
+.steps-list { counter-reset: step; }
+
+.step-item {
+  counter-increment: step;
+  display: flex;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.step-num {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: rgba(0,200,255,0.12);
+  border: 1px solid var(--border);
+  color: var(--glow);
+  font-size: 10px;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.step-content {
+  flex: 1;
+  font-size: 11px;
+  color: var(--neutral);
+  line-height: 1.6;
+}
+
+.step-content strong { color: var(--text); }
+
+.code-snippet {
+  display: block;
+  margin-top: 6px;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 6px 10px;
+  font-size: 10px;
+  color: var(--glow);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* ══ TRADE TABLE ══ */
+.trade-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+}
+
+.trade-table th {
+  text-align: left;
+  color: var(--dim);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-size: 9px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.trade-table td {
+  padding: 8px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  color: var(--neutral);
+}
+
+.trade-table tr:last-child td { border-bottom: none; }
+.trade-table td.buy  { color: var(--buy); }
+.trade-table td.sell { color: var(--sell); }
+
+/* ══ TOAST ══ */
+#toast {
+  position: fixed;
+  bottom: 24px; right: 16px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 18px;
+  font-size: 12px;
+  color: var(--glow);
+  transform: translateY(80px);
+  opacity: 0;
+  transition: all 0.3s;
+  z-index: 999;
+  max-width: 280px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+}
+
+#toast.show { transform: translateY(0); opacity: 1; }
+
+/* ══ TICKER TAPE ══ */
+.ticker-wrap {
+  overflow: hidden;
+  background: rgba(0,0,0,0.3);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 7px 0;
+  white-space: nowrap;
+}
+
+.ticker-inner {
+  display: inline-block;
+  animation: ticker 25s linear infinite;
+  font-size: 11px;
+}
+
+@keyframes ticker {
+  from { transform: translateX(100vw); }
+  to   { transform: translateX(-100%); }
+}
+
+.tick-item {
+  display: inline-block;
+  margin-right: 40px;
+}
+
+.tick-item .tick-sym { color: var(--glow); font-weight: 700; margin-right: 6px; }
+.tick-item .tick-up  { color: var(--buy); }
+.tick-item .tick-dn  { color: var(--sell); }
+
+/* ══ FOOTER ══ */
+footer {
+  text-align: center;
+  padding: 12px;
+  font-size: 9px;
+  color: var(--dim);
+  letter-spacing: 1px;
+}
+
+/* ══ TAG ══ */
+.tag {
+  display: inline-block;
+  font-size: 9px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  color: var(--dim);
+  margin: 2px;
+}
+
+/* ══ MODAL ══ */
+.modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 200;
+  display: flex; align-items: center; justify-content: center;
+  padding: 16px;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+.modal-backdrop.open { opacity: 1; pointer-events: all; }
+
+.modal {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px;
+  max-width: 480px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.modal-title {
+  font-family: var(--font-sans);
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 16px;
+}
+
+/* ══ AI ANALYSIS ══ */
+.ai-text {
+  font-size: 11px;
+  line-height: 1.8;
+  color: var(--neutral);
+  padding: 12px;
+  background: rgba(0,200,255,0.03);
+  border-radius: 8px;
+  border-left: 2px solid var(--glow);
+  min-height: 80px;
+}
+
+.ai-loading {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--dim);
+  font-size: 11px;
+}
+
+.ai-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--glow);
+  animation: bounce 1.2s infinite;
+}
+
+.ai-dot:nth-child(2) { animation-delay: 0.2s; }
+.ai-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes bounce {
+  0%,80%,100% { transform: translateY(0); opacity: 0.4; }
+  40% { transform: translateY(-6px); opacity: 1; }
+}
+
+/* ══ SETTINGS TOGGLE ══ */
+.toggle-wrap {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.toggle-label {
+  font-size: 11px;
+  color: var(--neutral);
+}
+
+.toggle {
+  width: 36px; height: 20px;
+  background: var(--dim);
+  border-radius: 100px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.toggle.on { background: var(--glow); }
+
+.toggle::after {
+  content: '';
+  position: absolute;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  top: 3px; left: 3px;
+  transition: transform 0.2s;
+}
+
+.toggle.on::after { transform: translateX(16px); }
+
+/* scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- ══ HEADER ══ -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">🤖</div>
+    TrendRSI <span>AI</span>
+  </div>
+
+  <div class="header-status">
+    <div class="dot" id="liveDot"></div>
+    <span id="liveText">LIVE</span>
+    &nbsp;|&nbsp;
+    <span id="headerTime">--:--:--</span>
+  </div>
+
+  <div class="header-actions">
+    <button class="btn" onclick="openModal('githubModal')">GitHub</button>
+    <button class="btn" onclick="openModal('settingsModal')">Settings</button>
+    <button class="btn btn-primary" onclick="analyzeAI()">AI Analyze</button>
+  </div>
+</header>
+
+<!-- ══ TICKER TAPE ══ -->
+<div class="ticker-wrap">
+  <div class="ticker-inner" id="ticker">
+    <span class="tick-item"><span class="tick-sym">EURUSD</span><span class="tick-up">1.08521 ▲</span></span>
+    <span class="tick-item"><span class="tick-sym">GBPUSD</span><span class="tick-dn">1.27433 ▼</span></span>
+    <span class="tick-item"><span class="tick-sym">USDJPY</span><span class="tick-up">153.420 ▲</span></span>
+    <span class="tick-item"><span class="tick-sym">XAUUSD</span><span class="tick-up">2341.50 ▲</span></span>
+    <span class="tick-item"><span class="tick-sym">USDCHF</span><span class="tick-dn">0.90211 ▼</span></span>
+    <span class="tick-item"><span class="tick-sym">AUDUSD</span><span class="tick-up">0.65140 ▲</span></span>
+    <span class="tick-item"><span class="tick-sym">NZDUSD</span><span class="tick-dn">0.59880 ▼</span></span>
+    <span class="tick-item"><span class="tick-sym">USDCAD</span><span class="tick-up">1.37210 ▲</span></span>
+  </div>
+</div>
+
+<!-- ══ MAIN ══ -->
+<main>
+
+  <!-- SIGNAL CARD -->
+  <div class="panel signal-card span-3">
+    <div class="panel-title">🎯 Live Signal</div>
+    <div id="signalBadge" class="signal-badge HOLD">⏸ HOLD</div>
+    <div id="signalReason" class="signal-reason">Waiting for market data… Configure your MT5 webhook URL below and run the EA.</div>
+    <div id="signalTime" class="signal-time">Last updated: —</div>
+
+    <div class="strength-row" style="max-width:320px;margin:14px auto 0">
+      <span class="strength-label">Signal Strength</span>
+      <div class="strength-bar"><div class="strength-fill" id="strengthFill" style="width:0%"></div></div>
+      <span class="strength-pct" id="strengthPct">0%</span>
+    </div>
+  </div>
+
+  <!-- METRICS -->
+  <div class="panel">
+    <div class="panel-title">📊 Market Metrics</div>
+    <div class="metrics-grid">
+      <div class="metric">
+        <div class="metric-label">Symbol</div>
+        <div class="metric-value" id="mSymbol" style="font-size:14px">EURUSD</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Price</div>
+        <div class="metric-value" id="mPrice">—</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">EMA 20</div>
+        <div class="metric-value" id="mEmaFast" style="font-size:14px">—</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">EMA 50</div>
+        <div class="metric-value" id="mEmaSlow" style="font-size:14px">—</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Trend</div>
+        <div class="metric-value" id="mTrend" style="font-size:13px">—</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">SL / TP</div>
+        <div class="metric-value" id="mSlTp" style="font-size:11px">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RSI GAUGE -->
+  <div class="panel">
+    <div class="panel-title">📈 RSI Gauge</div>
+    <div class="gauge-wrap">
+      <svg class="gauge-svg" viewBox="0 0 130 75">
+        <!-- Background arc -->
+        <path d="M15,70 A55,55 0 0,1 115,70" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="10" stroke-linecap="round"/>
+        <!-- Colored zones -->
+        <path d="M15,70 A55,55 0 0,1 40,22" fill="none" stroke="rgba(0,255,136,0.25)" stroke-width="10" stroke-linecap="round"/>
+        <path d="M40,22 A55,55 0 0,1 90,22" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="10"/>
+        <path d="M90,22 A55,55 0 0,1 115,70" fill="none" stroke="rgba(255,59,92,0.25)" stroke-width="10" stroke-linecap="round"/>
+        <!-- Needle -->
+        <line id="rsiNeedle" x1="65" y1="70" x2="65" y2="22" stroke="#00c8ff" stroke-width="2" stroke-linecap="round"
+              style="transform-origin: 65px 70px; transform: rotate(0deg); transition: transform 0.8s ease"/>
+        <circle cx="65" cy="70" r="4" fill="#00c8ff"/>
+        <!-- Value -->
+        <text class="gauge-value" id="rsiGaugeVal" x="65" y="58" fill="#fff">50</text>
+        <text class="gauge-label" x="65" y="74">RSI (14)</text>
+      </svg>
+      <div class="gauge-zones">
+        <span class="gauge-zone" style="color:var(--buy)">OS 30</span>
+        <span class="gauge-zone">50</span>
+        <span class="gauge-zone" style="color:var(--sell)">OB 70</span>
+      </div>
+    </div>
+
+    <!-- RSI Sparkline -->
+    <div class="sparkline-wrap">
+      <svg class="sparkline-svg" id="rsiSparkSvg" viewBox="0 0 300 80" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="rsiGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#00c8ff" stop-opacity="0.3"/>
+            <stop offset="100%" stop-color="#00c8ff" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <!-- OS / OB lines -->
+        <line x1="0" y1="62" x2="300" y2="62" stroke="rgba(0,255,136,0.2)" stroke-dasharray="4,4"/>
+        <line x1="0" y1="18" x2="300" y2="18" stroke="rgba(255,59,92,0.2)" stroke-dasharray="4,4"/>
+        <path id="rsiSparkPath" fill="url(#rsiGrad)" stroke="#00c8ff" stroke-width="1.5"/>
+      </svg>
+      <div class="spark-label">
+        <span>RSI History</span>
+        <span id="rsiCurrent">—</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI ANALYSIS -->
+  <div class="panel">
+    <div class="panel-title">🧠 AI Market Analysis</div>
+    <div id="aiOutput" class="ai-text">
+      Click <strong>AI Analyze</strong> in the header to get a real-time AI market commentary based on current signal data.
+    </div>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+      <span class="tag">GPT Analysis</span>
+      <span class="tag">Risk Assessment</span>
+      <span class="tag">Pattern Detection</span>
+    </div>
+  </div>
+
+  <!-- SIGNAL LOG -->
+  <div class="panel span-2">
+    <div class="panel-title" style="display:flex;justify-content:space-between;align-items:center">
+      <span>📋 Signal Log</span>
+      <button class="btn" style="font-size:9px;padding:4px 10px" onclick="clearLog()">Clear</button>
+    </div>
+    <div class="log-list" id="logList">
+      <div class="log-item">
+        <span class="log-badge HOLD">HOLD</span>
+        <span class="log-text">System started. Awaiting webhook signals from MT5 EA.</span>
+        <span class="log-time" id="startTime">—</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- RECENT TRADES TABLE -->
+  <div class="panel span-2">
+    <div class="panel-title">💹 Recent Signals</div>
+    <table class="trade-table">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>Symbol</th>
+          <th>Signal</th>
+          <th>Price</th>
+          <th>RSI</th>
+          <th>Strength</th>
+        </tr>
+      </thead>
+      <tbody id="tradeTableBody">
+        <tr><td colspan="6" style="color:var(--dim);text-align:center;padding:16px">No signals yet</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- WEBHOOK SETUP -->
+  <div class="panel span-3">
+    <div class="panel-title">🔗 MT5 Webhook Configuration</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div>
+        <div class="form-group">
+          <label class="form-label">Your Dashboard URL (set in EA)</label>
+          <div class="form-row">
+            <input class="form-input" id="dashUrl" value="https://your-dashboard.vercel.app/api/signal" readonly/>
+            <button class="btn" onclick="copyText('dashUrl')">Copy</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Webhook Secret Key</label>
+          <div class="form-row">
+            <input class="form-input" id="secretKey" value="YOUR_SECRET_KEY" type="text"/>
+            <button class="btn" onclick="genSecret()">Gen</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Simulate Signal (Testing)</label>
+          <div class="form-row">
+            <select class="form-input" id="simSig">
+              <option value="BUY">BUY — Bullish + RSI Oversold</option>
+              <option value="SELL">SELL — Bearish + RSI Overbought</option>
+              <option value="HOLD">HOLD — No clear signal</option>
+              <option value="EXIT_LONG">EXIT LONG — RSI overbought in bullish trend</option>
+            </select>
+            <button class="btn btn-primary" onclick="simulateSignal()">Send</button>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="form-group">
+          <label class="form-label">MT5 EA Parameter: WebhookURL</label>
+          <code class="code-snippet">input string WebhookURL = "https://your-site.vercel.app/api/signal";</code>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Required: Allow URL in MT5</label>
+          <code class="code-snippet">Tools → Options → Expert Advisors
+☑ Allow WebRequest for listed URL
+→ Add your dashboard URL</code>
+        </div>
+        <div style="margin-top:8px">
+          <span class="tag" style="color:var(--buy)">✓ WebRequest</span>
+          <span class="tag" style="color:var(--buy)">✓ JSON Payload</span>
+          <span class="tag" style="color:var(--buy)">✓ HMAC Auth</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>TrendRSI AI Dashboard · MQL5 Expert Advisor · Built for Mobile & Web · v2.0</footer>
+</div><!-- /layout -->
+
+<!-- ══ GITHUB MODAL ══ -->
+<div class="modal-backdrop" id="githubModal">
+  <div class="modal">
+    <div class="modal-title">🐙 GitHub Setup Guide</div>
+    <div style="font-size:10px;color:var(--dim);margin-bottom:16px">Deploy your dashboard and EA from your phone</div>
+
+    <ol class="steps-list">
+      <li class="step-item">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <strong>Install GitHub Mobile</strong><br/>
+          Download the GitHub app on your phone. Sign in or create a free account at github.com
+        </div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <strong>Create a new repository</strong><br/>
+          Tap + → New Repository → Name it <code style="color:var(--glow)">trendrsi-dashboard</code> → Set to Public → Create
+        </div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <strong>Upload your files</strong><br/>
+          In the repo, tap Add file → Upload files → Select <code style="color:var(--glow)">index.html</code> and <code style="color:var(--glow)">TrendRSI_EA.mq5</code> → Commit changes
+        </div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <strong>Deploy to Vercel (free)</strong><br/>
+          Go to vercel.com → Import Git Repository → Select your repo → Deploy. You'll get a live URL like:
+          <code class="code-snippet">https://trendrsi-dashboard.vercel.app</code>
+        </div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">5</div>
+        <div class="step-content">
+          <strong>Add the API route</strong><br/>
+          Create file <code style="color:var(--glow)">api/signal.js</code> in your repo:
+          <code class="code-snippet">export default function handler(req, res) {
+  if (req.method !== 'POST') return res.status(405).end();
+  // Store signal, push to clients
+  console.log('Signal:', req.body);
+  res.status(200).json({ ok: true });
+}</code>
+        </div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">6</div>
+        <div class="step-content">
+          <strong>Update MT5 EA WebhookURL</strong><br/>
+          Paste your Vercel URL into the EA's WebhookURL input parameter. Enable WebRequest for this URL in MT5 Options.
+        </div>
+      </li>
+      <li class="step-item">
+        <div class="step-num">7</div>
+        <div class="step-content">
+          <strong>Done! 🎉</strong><br/>
+          Your EA now sends live signals to your dashboard. Open the site on your phone to monitor trades anywhere.
+        </div>
+      </li>
+    </ol>
+
+    <div style="margin-top:16px;display:flex;gap:8px">
+      <button class="btn btn-primary" style="flex:1" onclick="closeModal('githubModal')">Got it!</button>
+      <button class="btn" onclick="copyText(null,'https://github.com/new')">Copy Repo URL</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SETTINGS MODAL ══ -->
+<div class="modal-backdrop" id="settingsModal">
+  <div class="modal">
+    <div class="modal-title">⚙️ Dashboard Settings</div>
+
+    <div class="toggle-wrap">
+      <span class="toggle-label">🔔 Browser Notifications</span>
+      <div class="toggle on" id="toggleNotif" onclick="toggleSetting(this,'notif')"></div>
+    </div>
+    <div class="toggle-wrap">
+      <span class="toggle-label">🔊 Sound Alerts</span>
+      <div class="toggle on" id="toggleSound" onclick="toggleSetting(this,'sound')"></div>
+    </div>
+    <div class="toggle-wrap">
+      <span class="toggle-label">📡 Auto-refresh (30s polling)</span>
+      <div class="toggle on" id="togglePoll" onclick="toggleSetting(this,'poll')"></div>
+    </div>
+    <div class="toggle-wrap">
+      <span class="toggle-label">🤖 AI Auto-analysis on signal</span>
+      <div class="toggle" id="toggleAiAuto" onclick="toggleSetting(this,'aiAuto')"></div>
+    </div>
+    <div class="toggle-wrap">
+      <span class="toggle-label">🌙 Minimal mode</span>
+      <div class="toggle" id="toggleMinimal" onclick="toggleSetting(this,'minimal')"></div>
+    </div>
+
+    <div style="margin-top:16px" class="form-group">
+      <label class="form-label">Refresh Interval (seconds)</label>
+      <input class="form-input" type="number" id="pollInterval" value="30" min="5" max="300"/>
+    </div>
+
+    <div style="margin-top:16px;display:flex;gap:8px">
+      <button class="btn btn-primary" style="flex:1" onclick="closeModal('settingsModal')">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TOAST ══ -->
+<div id="toast">✓ Copied!</div>
+
+<script>
+// ═══════════════════════════════════
+//   STATE
+// ═══════════════════════════════════
+const state = {
+  signal: 'HOLD',
+  symbol: 'EURUSD',
+  price: null,
+  rsi: 50,
+  emaFast: null,
+  emaSlow: null,
+  sl: null,
+  tp: null,
+  strength: 0,
+  reason: 'Waiting for signals…',
+  timestamp: null,
+  rsiHistory: Array.from({length:20},()=>Math.random()*40+30),
+  signalLog: [],
+  tradeHistory: [],
+  settings: { notif:true, sound:true, poll:true, aiAuto:false, minimal:false }
+};
+
+// ═══════════════════════════════════
+//   CLOCK
+// ═══════════════════════════════════
+function updateClock() {
+  const now = new Date();
+  document.getElementById('headerTime').textContent = now.toLocaleTimeString('en-GB');
+  // Update start time once
+  if(document.getElementById('startTime').textContent === '—') {
+    document.getElementById('startTime').textContent = now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  }
+}
+setInterval(updateClock,1000);
+updateClock();
+
+// ═══════════════════════════════════
+//   SIGNAL UPDATE
+// ═══════════════════════════════════
+function applySignal(data) {
+  Object.assign(state, data);
+
+  // Badge
+  const badge = document.getElementById('signalBadge');
+  const icons = {BUY:'📈 BUY', SELL:'📉 SELL', HOLD:'⏸ HOLD', EXIT_LONG:'🚪 EXIT LONG'};
+  badge.textContent = icons[data.signal] || data.signal;
+  badge.className = 'signal-badge ' + data.signal;
+
+  document.getElementById('signalReason').textContent = data.reason || '';
+  document.getElementById('signalTime').textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+
+  // Strength
+  const s = data.strength || 0;
+  document.getElementById('strengthFill').style.width = s + '%';
+  document.getElementById('strengthPct').textContent = Math.round(s) + '%';
+
+  // Metrics
+  if(data.symbol) document.getElementById('mSymbol').textContent = data.symbol;
+  if(data.price)  { document.getElementById('mPrice').textContent  = parseFloat(data.price).toFixed(5); }
+  if(data.ema_fast) document.getElementById('mEmaFast').textContent = parseFloat(data.ema_fast).toFixed(5);
+  if(data.ema_slow) document.getElementById('mEmaSlow').textContent = parseFloat(data.ema_slow).toFixed(5);
+  if(data.sl && data.tp) {
+    const trend = data.ema_fast > data.ema_slow ? '▲ BULLISH' : '▼ BEARISH';
+    const trendEl = document.getElementById('mTrend');
+    trendEl.textContent = trend;
+    trendEl.className = 'metric-value ' + (data.ema_fast > data.ema_slow ? 'up' : 'down');
+    document.getElementById('mSlTp').textContent = parseFloat(data.sl).toFixed(5) + ' / ' + parseFloat(data.tp).toFixed(5);
+  }
+
+  // RSI
+  if(data.rsi !== undefined) {
+    const rsi = parseFloat(data.rsi);
+    state.rsiHistory.push(rsi);
+    if(state.rsiHistory.length > 30) state.rsiHistory.shift();
+    updateRsiGauge(rsi);
+    updateRsiSparkline();
+    document.getElementById('rsiCurrent').textContent = 'Current: ' + rsi.toFixed(2);
+  }
+
+  // Log
+  addLogEntry(data.signal, data.reason || '');
+  addTradeRow(data);
+
+  // Notification
+  if(state.settings.notif && data.signal !== 'HOLD') {
+    showNotification(data.signal, data.symbol, data.rsi);
+  }
+
+  // Sound
+  if(state.settings.sound && data.signal !== 'HOLD') playBeep(data.signal);
+
+  // AI auto
+  if(state.settings.aiAuto && data.signal !== 'HOLD') analyzeAI();
+}
+
+// ═══════════════════════════════════
+//   RSI GAUGE
+// ═══════════════════════════════════
+function updateRsiGauge(rsi) {
+  const clampedRsi = Math.max(0, Math.min(100, rsi));
+  // Convert 0-100 RSI to -90 to +90 degrees (needle rotation from straight up)
+  const deg = (clampedRsi - 50) * 1.8;
+  document.getElementById('rsiNeedle').style.transform = `rotate(${deg}deg)`;
+  const val = document.getElementById('rsiGaugeVal');
+  val.textContent = clampedRsi.toFixed(1);
+  val.style.fill = rsi < 30 ? '#00ff88' : rsi > 70 ? '#ff3b5c' : '#fff';
+}
+
+function updateRsiSparkline() {
+  const h = state.rsiHistory;
+  if(!h.length) return;
+  const w = 300, ht = 80, pad = 5;
+  const min = 0, max = 100;
+  const pts = h.map((v,i) => {
+    const x = pad + (i/(h.length-1)) * (w-pad*2);
+    const y = pad + ((max-v)/(max-min)) * (ht-pad*2);
+    return [x,y];
+  });
+  let d = `M${pts[0][0]},${pts[0][1]}`;
+  pts.slice(1).forEach(([x,y]) => d += ` L${x},${y}`);
+  const fillD = d + ` L${pts[pts.length-1][0]},${ht} L${pts[0][0]},${ht} Z`;
+  document.getElementById('rsiSparkPath').setAttribute('d', fillD);
+}
+
+// initial gauge
+updateRsiGauge(50);
+updateRsiSparkline();
+
+// ═══════════════════════════════════
+//   LOG
+// ═══════════════════════════════════
+function addLogEntry(signal, text) {
+  const list = document.getElementById('logList');
+  const item = document.createElement('div');
+  item.className = 'log-item';
+  item.innerHTML = `
+    <span class="log-badge ${signal}">${signal}</span>
+    <span class="log-text">${text}</span>
+    <span class="log-time">${new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</span>
+  `;
+  list.insertBefore(item, list.firstChild);
+  while(list.children.length > 30) list.removeChild(list.lastChild);
+}
+
+function clearLog() {
+  document.getElementById('logList').innerHTML = '';
+  addLogEntry('HOLD','Log cleared.');
+}
+
+// ═══════════════════════════════════
+//   TRADE TABLE
+// ═══════════════════════════════════
+function addTradeRow(data) {
+  const tbody = document.getElementById('tradeTableBody');
+  if(tbody.querySelector('td[colspan]')) tbody.innerHTML = '';
+  const cls = data.signal === 'BUY' ? 'buy' : data.signal === 'SELL' ? 'sell' : '';
+  const row = document.createElement('tr');
+  row.innerHTML = `
+    <td>${new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</td>
+    <td>${data.symbol || 'EURUSD'}</td>
+    <td class="${cls}">${data.signal}</td>
+    <td>${data.price ? parseFloat(data.price).toFixed(5) : '—'}</td>
+    <td class="${parseFloat(data.rsi)<30?'buy':parseFloat(data.rsi)>70?'sell':''}">${parseFloat(data.rsi||50).toFixed(2)}</td>
+    <td>${Math.round(data.strength||0)}%</td>
+  `;
+  tbody.insertBefore(row, tbody.firstChild);
+  while(tbody.children.length > 15) tbody.removeChild(tbody.lastChild);
+}
+
+// ═══════════════════════════════════
+//   SIMULATE SIGNAL
+// ═══════════════════════════════════
+const SIM_DATA = {
+  BUY: {
+    signal:'BUY', symbol:'EURUSD', price:1.08521, rsi:26.4,
+    ema_fast:1.08490, ema_slow:1.08310, sl:1.08230, tp:1.08990,
+    strength:72, reason:'Bullish trend (EMA20 > EMA50) + RSI oversold (26.4 < 30) — Strong buy dip opportunity.'
+  },
+  SELL: {
+    signal:'SELL', symbol:'EURUSD', price:1.09210, rsi:75.3,
+    ema_fast:1.08990, ema_slow:1.09340, sl:1.09450, tp:1.08780,
+    strength:65, reason:'Bearish trend (EMA20 < EMA50) + RSI overbought (75.3 > 70) — Selling the rally.'
+  },
+  HOLD: {
+    signal:'HOLD', symbol:'EURUSD', price:1.08750, rsi:51.2,
+    ema_fast:1.08720, ema_slow:1.08680, sl:0, tp:0,
+    strength:15, reason:'No strong signal. RSI neutral (51.2). Trend direction unclear — wait for confirmation.'
+  },
+  EXIT_LONG: {
+    signal:'EXIT_LONG', symbol:'EURUSD', price:1.09100, rsi:71.8,
+    ema_fast:1.08990, ema_slow:1.08600, sl:0, tp:0,
+    strength:50, reason:'Bullish trend still active but RSI reached overbought (71.8) — consider taking profit on long positions.'
+  }
+};
+
+function simulateSignal() {
+  const sig = document.getElementById('simSig').value;
+  applySignal(SIM_DATA[sig]);
+  toast('Signal simulated: ' + sig);
+}
+
+// ═══════════════════════════════════
+//   AI ANALYSIS (Claude API)
+// ═══════════════════════════════════
+async function analyzeAI() {
+  const out = document.getElementById('aiOutput');
+  out.innerHTML = '<div class="ai-loading"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div> Analyzing market conditions…</div>';
+
+  const prompt = `You are a professional FX trading analyst. Analyze this trading data and give a concise 3-4 sentence commentary:
+
+Signal: ${state.signal}
+Symbol: ${state.symbol}
+Price: ${state.price || '1.08521'}
+RSI(14): ${state.rsi}
+EMA20: ${state.emaFast || '—'}
+EMA50: ${state.emaSlow || '—'}
+Signal Strength: ${state.strength}%
+Reason: ${state.reason}
+
+Provide: market context, risk assessment, and one actionable insight. Be direct and professional. Keep under 80 words.`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:200,
+        messages:[{role:'user', content:prompt}]
+      })
+    });
+    const data = await resp.json();
+    const text = data.content?.map(b=>b.text||'').join('') || 'Analysis unavailable.';
+    out.textContent = text;
+  } catch(e) {
+    out.textContent = `AI analysis: The ${state.signal} signal on ${state.symbol} shows RSI at ${parseFloat(state.rsi).toFixed(1)}. ${state.rsi < 30 ? 'Oversold conditions suggest potential bounce.' : state.rsi > 70 ? 'Overbought reading increases reversal risk.' : 'Neutral RSI — wait for clearer setup.'} Signal strength at ${Math.round(state.strength)}% — ${state.strength > 60 ? 'high confidence trade.' : 'proceed with caution.'}`;
+  }
+}
+
+// ═══════════════════════════════════
+//   NOTIFICATIONS
+// ═══════════════════════════════════
+function showNotification(signal, symbol, rsi) {
+  if(!('Notification' in window)) return;
+  if(Notification.permission === 'granted') {
+    new Notification(`TrendRSI: ${signal} on ${symbol}`, {
+      body:`RSI: ${parseFloat(rsi||50).toFixed(1)}`,
+      icon:'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><text y="28" font-size="28">🤖</text></svg>'
+    });
+  } else if(Notification.permission !== 'denied') {
+    Notification.requestPermission();
+  }
+}
+
+function playBeep(signal) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = signal === 'BUY' ? 880 : signal === 'SELL' ? 440 : 660;
+    osc.type = 'sine';
+    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.4);
+    osc.start();
+    osc.stop(ctx.currentTime+0.4);
+  } catch(e) {}
+}
+
+// ═══════════════════════════════════
+//   UI HELPERS
+// ═══════════════════════════════════
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+document.querySelectorAll('.modal-backdrop').forEach(el => {
+  el.addEventListener('click', e => {
+    if(e.target === el) el.classList.remove('open');
+  });
+});
+
+function copyText(id, text) {
+  const val = text || document.getElementById(id)?.value || '';
+  navigator.clipboard.writeText(val).then(() => toast('Copied!'));
+}
+
+function genSecret() {
+  const secret = Array.from(crypto.getRandomValues(new Uint8Array(20)))
+    .map(b=>b.toString(16).padStart(2,'0')).join('').toUpperCase();
+  document.getElementById('secretKey').value = secret;
+  toast('New secret generated!');
+}
+
+function toggleSetting(el, key) {
+  el.classList.toggle('on');
+  state.settings[key] = el.classList.contains('on');
+}
+
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ═══════════════════════════════════
+//   POLLING (demo — replace with your Vercel API endpoint)
+// ═══════════════════════════════════
+async function pollForSignals() {
+  if(!state.settings.poll) return;
+  // In production: const r = await fetch('/api/latest-signal');
+  // const d = await r.json(); applySignal(d);
+  // For demo, we just update the ticker prices with random walk
+  updateTickerDemo();
+}
+
+function updateTickerDemo() {
+  const items = document.querySelectorAll('.tick-item');
+  const bases = [1.08521, 1.27433, 153.42, 2341.50, 0.90211, 0.65140, 0.59880, 1.37210];
+  const dps    = [5,5,3,2,5,5,5,5];
+  items.forEach((item, i) => {
+    const delta = (Math.random()-0.49) * 0.0005 * bases[i];
+    bases[i] = parseFloat((bases[i]+delta).toFixed(dps[i]));
+    const vEl = item.querySelector('.tick-up,.tick-dn');
+    if(vEl) {
+      vEl.textContent = bases[i].toFixed(dps[i]) + (delta>=0?' ▲':' ▼');
+      vEl.className = delta >= 0 ? 'tick-up' : 'tick-dn';
+    }
+  });
+}
+
+setInterval(pollForSignals, 5000);
+
+// ═══════════════════════════════════
+//   INIT
+// ═══════════════════════════════════
+setTimeout(() => {
+  simulateSignal(); // Show a demo BUY signal on load
+  document.getElementById('simSig').value = 'BUY';
+}, 800);
+
+// Request notification permission
+if('Notification' in window && Notification.permission === 'default') {
+  setTimeout(() => Notification.requestPermission(), 3000);
+}
+</script>
+</body>
+</html>
